@@ -37,6 +37,8 @@ df_Delphinidae <- read_tsv("http://www.boldsystems.org/index.php/API_Public/comb
 # How many missing BINs are there?
 sum(is.na(df_Delphinidae$bin_uri)) # 177 missing BINs in our data, which means that most of the records have a BIN associated with them.
 
+# It looks to me like there are 106 missing BINs in the data but this could just be due to a more recent download of the data from BOLD.
+
 # How many unique BINs are there?
 length(unique(na.omit(df_Delphinidae$bin_uri))) # There are 24 unique BINs in the Delphinidae data frame (excluding missing values)
 
@@ -56,33 +58,38 @@ length(unique(na.omit(df_Delphinidae$bin_uri))) / length(unique(na.omit(df_Delph
 df_BINspeciesname <- select(df_Delphinidae, "bin_uri", "species_name") # Used the select() function from the dplyr package to subset the 2 columns from the df_Delphinidae data frame and put them into a new data frame.
 
 # filter function is used to filter every record that has a BIN, but does not have a species name associated with it.
+
+# We can do this a little easier making use of the distinct function, so we filter out any non-unique values and this way you don't  have to manually pick out unique values.
 BINs_nospecies <- df_BINspeciesname %>%
   filter(!is.na(bin_uri)) %>%
-  filter(is.na(species_name))
+  filter(is.na(species_name))%>%
+  distinct(bin_uri, species_name) # This is a new line that I inserted - adding both bin_uri and species_name makes sure both columns are retained.
 BINs_nospecies
 # We get 3 records that have BINs that don't have a species name associated with them, but only 2 of them are unique: BOLD:ABY4191 and BOLD:AAD4421
 
 
 # We can search for both of these BINs within the dataframe to see if there any matches:
 # BOLD:ABY4181
+# Here again, we can add a single addition to our filtering to only retain unique values and ensure you're not missing anything by manually checking the species name columns
 df_ABY4181 <- df_Delphinidae %>%
   select(species_name, bin_uri) %>%
-  filter(bin_uri == "BOLD:ABY4181")
+  filter(bin_uri == "BOLD:ABY4181")%>%
+  distinct(species_name, bin_uri) # same as above
 df_ABY4181
 # It appears that this BIN can be associated with the Stenella longirostris species.
 
+# Here again, we can add a single addition to our filtering to only retain unique values and ensure you're not missing anything by manually checking the species name columns
 
 # BOLD:AAD4421
 df_AAD4421 <- df_Delphinidae %>%
   select(species_name, bin_uri) %>%
-  filter(bin_uri == "BOLD:AAD4421")
-df_AAD4421
+  filter(bin_uri == "BOLD:AAD4421")%>%
+  distinct(species_name,bin_uri) %>% # same as above
+  filter(!is.na(species_name)) # I built this into your original dplyr call as well. As such, you can delete the check for number of species below.
+count(df_AAD4421) # now that we used the distinct function in our original dplyr call, we can just count the entries in the df_AAD4421 data frame - it looks like there are 7, the same as in your original code.
+
 # Interestingly, there are many different species associated with this particular BIN.
 
-df_AAD4421 %>%
-  group_by(species_name) %>%
-  filter(!is.na(species_name)) %>%
-  count()
 # Specifically, there are at least 7 different species associated with this BIN!
 
 # Let's check if the members of this BIN are within the same genus.
@@ -96,7 +103,8 @@ length(unique(df_AAD4421_genus$genus_name))
 
 # What are the 3 most common species in the dataset? 
 # Make a variable for the table of the frequency of each species in the dataset.
-spec_count <- table(df_Delphinidae$species_name)
+spec_count <- table(df_Delphinidae$species_name)%>%
+  sort(df_Delphinidae$species_name, decreasing = TRUE) # This a bit nitpicky, but I added it into your dplyr call so that the new data frame includes the sort. This way, you could hypothetically sort from here and manipulate in other ways if need be.
 spec_count
 # Then we can sort that table in ascending order, and return the names of the last 3 species with the names() function and tail() function
 tail(names(sort(spec_count, decreasing = FALSE)), 3) # Gives the top 3 most common species: "Orcinus orca", "Tursiops truncatus", and "Stenella longirostris"
