@@ -172,13 +172,15 @@ df_Delphinidae_subset1 <- df_Delphinidae_subset1 %>%
 # Source: Limits of Oceans and Seas by International Hydrographic Organization (1953) https://web.archive.org/web/20161013224338/http://www.iho.int/iho_pubs/standard/S-23/S-23_Ed3_1953_EN.pdf
 df_Delphinidae_Atlantic <- df_Delphinidae_subset1 %>% 
   filter(20 >= lon) %>%
-  filter(-67 <= lon)
+  filter(-67 <= lon)%>%
+  mutate(ocean="Atlantic") # Adding a column for ocean grouping for statistical analysis
 # There are 99 records that meet these criteria, which suggests that most of our specimens are collected from the Atlantic ocean
 
 # Defining Pacific ocean boundaries (same source)
 # The 146° longitude corresponds to the western border of the Pacific, all the way to the -67° longitude where it meets with the Atlantic Ocean
 df_Delphinidae_Pacific <- df_Delphinidae_subset1 %>%
-  filter(146 <= lon | -67 >= lon)
+  filter(146 <= lon | -67 >= lon)%>%
+  mutate (ocean="Pacific")# Adding a column for ocean grouping for statistical analysis
 # There are 9 records that were collected from the Pacific ocean.
 
 # Defining Indian ocean boundaries
@@ -186,7 +188,8 @@ df_Delphinidae_Pacific <- df_Delphinidae_subset1 %>%
 df_Delphinidae_Indian <- df_Delphinidae_subset1 %>%
   filter(146 >= lon) %>%
   filter(20 <= lon) %>%
-  filter(30 >= lat)
+  filter(30 >= lat)%>%
+  mutate (ocean="Indian") # Adding a column for ocean grouping for statistical analysis
 # There are 3 records that were collected from the Indian ocean.
 
 # There is one more record from Greece that does not fall into any of these groups.
@@ -195,7 +198,8 @@ df_Delphinidae_Medi <- df_Delphinidae_subset1 %>%
   filter(6 <= lon) %>%
   filter(36 >= lon) %>%
   filter(30 <= lat) %>%
-  filter(46 >= lat)
+  filter(46 >= lat)%>%
+  mutate (ocean ="Mediterranean")# Adding a column for ocean grouping for statistical analysis
 
 # Now that every record with longitude/latitude data has been grouped into their appropriate groups, we can analyze each group separately.
 
@@ -220,6 +224,22 @@ fig1_map <- mapview(my_sf_Atlantic, col.regions = "Cyan", map.types = "Esri.Worl
     mapview(my_sf_Medi, col.regions = "Yellow", map.types = "Esri.WorldImagery")
 # Generate the map
 fig1_map
+
+# Using the data and map you made above, we can perform an anova to see if the number of species entries differed significantly between oceans.
+
+# Creating a merged data frame with all oceans
+df_Delphinidae_merge <- rbind(df_Delphinidae_Atlantic, df_Delphinidae_Indian, df_Delphinidae_Medi,df_Delphinidae_Pacific)
+
+# Grouping by ocean and adding a count column so we can test if the number of species entries differ significantly between oceans
+
+df_Delphinidae_merge_count <- df_Delphinidae_merge%>%
+  filter(!is.na(species_name))%>%
+  group_by(ocean)%>%
+  count(species_name)
+
+delph_lm <- lm(n~ocean, data = df_Delphinidae_merge_count)
+summary(delph_lm)
+anova(delph_lm)
 
 ##### Figure 1: World map with specimen data points with coordinate data from the Delphinidae family (n = 112). Data points are colour-coded based on their latitude (, Red = Pacific Ocean, Cyan = Atlantic Ocean, Yellow = Mediterranean, Purple = Indian Ocean).  
 
