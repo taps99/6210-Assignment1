@@ -140,8 +140,8 @@ df_CountryRecords <- df_Delphinidae %>%
   group_by(country) %>%
   filter(!is.na(country)) %>%
   count()
-  tail(arrange(df_CountryRecords, n), 1) # Brazil has the most records (86)
-  
+tail(arrange(df_CountryRecords, n), 1) # Brazil has the most records (86)
+
 
 # Looking at records that don't have a specific country name, but were instead associated with the ocean they were collected from
 nonspecific_records <- grep("Ocean", df_Delphinidae$country) # Use the grep() function to match the word "ocean" in my dataset and then getting the process IDs of these records
@@ -219,9 +219,9 @@ my_sf_Medi <- st_as_sf(df_Delphinidae_Medi, coords = c('lon','lat'), crs=4326)
 
 # Then we can combine each layer to showcase all data points on one map with different colors!
 fig1_map <- mapview(my_sf_Atlantic, col.regions = "Cyan", map.types = "Esri.WorldImagery") +
-    mapview(my_sf_Pacific, col.regions = "Red", map.types = "Esri.WorldImagery") +
-    mapview(my_sf_Indian, col.regions = "Purple", map.types = "Esri.WorldImagery") +
-    mapview(my_sf_Medi, col.regions = "Yellow", map.types = "Esri.WorldImagery")
+  mapview(my_sf_Pacific, col.regions = "Red", map.types = "Esri.WorldImagery") +
+  mapview(my_sf_Indian, col.regions = "Purple", map.types = "Esri.WorldImagery") +
+  mapview(my_sf_Medi, col.regions = "Yellow", map.types = "Esri.WorldImagery")
 # Generate the map
 fig1_map
 
@@ -322,21 +322,47 @@ df_Ocean_BINcounts_spread <- df_Ocean_BINcounts_spread %>%
 # Setting all NAs to 0
 df_Ocean_BINcounts_spread[is.na(df_Ocean_BINcounts_spread)] <- 0
 
-
 bray_BINs = vegdist(df_Ocean_BINcounts_spread, "bray") 
 
 # Figure 3: 
 # Histogram to look at the distribution of dissimilarity scores between Atlantic and Pacific BINs.
 
 fig3_histogram <- hist(bray_BINs, 
-     main = "Distribution of BIN Dissimilarity Scores", 
-     col = "#56B4E9",
-     breaks = 2,
-     xlab = "Dissimilarity score",
-     xlim = range(0,1)) # Dissimilarity score ranges from 0 to 1, where 1 indicates maximum dissimilarity (https://peat-clark.github.io/BIO381/veganTutorial.html)
+                       main = "Distribution of BIN Dissimilarity Scores", 
+                       col = "#56B4E9",
+                       breaks = 2,
+                       xlab = "Dissimilarity score",
+                       xlim = range(0,1)) # Dissimilarity score ranges from 0 to 1, where 1 indicates maximum dissimilarity (https://peat-clark.github.io/BIO381/veganTutorial.html)
 
 ##### Figure 3: Histogram depicting the distribution of BIN dissimilarity indices between BINs from the Atlantic and Pacific oceans. This was calculated using the vegdist() function from the vegan package using the Bray-Curtis algorithm.
 
+# Seeing as your Bray-Curtis dissimilarity plot has a wide spread of both frequency and dissimilarity score, I think it might be helpful to try and see how different methods within the vegdist package fare. The Chao and Morisita methods are used to handle different sample sizes, so we can use those, given the summary of our data frame shows there is a wide range. 
+summary(df_Ocean_BINcounts_spread)
+
+bray_BINs = vegdist(df_Ocean_BINcounts_spread, "bray")
+chao_BINs = vegdist(df_Ocean_BINcounts_spread, "chao")
+morisita_BINs = vegdist(df_Ocean_BINcounts_spread, "morisita")
+
+# Now that we have three different measures of dissimilarity, maybe there is a different way we can visualize it!S
+
+# Creating a data frame with each measure of dissimilarity
+# Creating a character vector for the names of the measures of dissimilarity and their corresponding values
+measure <- c("Bray-Curtis", "Morisita", "Chao")
+value <- rbind (bray_BINs, chao_BINs, morisita_BINs)
+# Merging them into one data frame and removing the rownames for cleanliness
+combined_dissimilarity_df <- data.frame(measure,value)
+rownames(combined_dissimilarity_df) <- NULL
+
+# Using ggplot to visualize the three different measures of dissimilarity
+combined_dissimilarity_plot <- ggplot (combined_dissimilarity_df, aes (x = measure, y = value, color = measure)) +
+  geom_point(size = 6) + labs (x = "Measure of dissimilarity", y = "Dissimilarity score") +
+  theme_bw() + theme(panel.border = element_blank(), 
+                     panel.grid.major = element_blank(),
+                     panel.grid.minor = element_blank(), 
+                     axis.line = element_line(colour = "black"),
+                     legend.title= element_blank(),
+                     legend.text=element_text(size=14))
+combined_dissimilarity_plot
 
 ##### Part 3 - Results & Discussion
 # As mentioned before, the literature states that there are 37 known species that make up the Delphinidae family (McGowen et al., 2019). While exploring the Delphinidae dataset (n = 1100 samples) from the BOLD database, only 29 unique species were able to be identified. Additionally, there were only 24 unique BINs. With this information I was able to calculate a ratio of unique BIN to unique species: 0.828. While exploring the dataset, I also found some samples with BINs that did not have a species name associated with them. Specifically, one of the BINs (BOLD:AAD4421) was found to be associated with 7 different species of the Delphinidae family. These results indicate that different species were assigned to the same BIN. As mentioned before, the Delphinidae family has undergone recent adaptive radiation and hybridization, which might result in some ambiguity when looking at the phylogenetic relationships within this family (McGowen et al., 2019). The adaptive radiation of this family might be a result of its wide geographic distribution, leading to increased intraspecific divergence as a result (Gaytan et al., 2020). I then went on to look into where the specimen data was obtained from. Disappointingly, most of the data was mined from GenBank which was not very interesting. Only a small fraction of the data was actually obtained from institutions (43 out of 1100 records). 
